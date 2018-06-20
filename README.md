@@ -1,5 +1,8 @@
 # str-concat
 
+[![Crates.io](https://img.shields.io/crates/v/str-concat.svg)](https://crates.io/crates/str-concat)
+[![Docs.rs](https://docs.rs/str-concat/badge.svg)](https://docs.rs/str-concat/)
+
 Concatenate two adjacent string slices.
 
 # License
