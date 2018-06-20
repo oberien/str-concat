@@ -95,11 +95,12 @@ pub fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
 ///
 /// [`concat`]: fn.concat.html
 pub fn concat_unordered<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
-    let a_ptr = a.as_bytes().as_ptr();
-    let b_ptr = b.as_bytes().as_ptr();
+    // add lengths to handle empty-string cases correctly
+    let a_ptr = a.as_bytes().as_ptr() as usize + a.len();
+    let b_ptr = b.as_bytes().as_ptr() as usize + b.len();
     
     // make the order of `a` and `b` not matter
-    let (a, b) = if a_ptr < b_ptr {
+    let (a, b) = if a_ptr <= b_ptr {
         (a, b)
     } else {
         (b, a)
@@ -150,4 +151,12 @@ mod tests {
         assert_eq!(Ok("0\u{FEFF}1"), concat(&s[..1], &s[1..5]));
     }
 
+    #[test]
+    fn empty_str() {
+        let s = "0123";
+        assert_eq!(Ok("0123"), concat(&s[..0], s));
+        assert_eq!(Ok("0123"), concat_unordered(&s[..0], s));
+        assert_eq!(Ok("0123"), concat(s, &s[4..]));
+        assert_eq!(Ok("0123"), concat_unordered(s, &s[4..]));
+    }
 }
