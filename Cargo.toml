@@ -2,5 +2,10 @@
 name = "str-concat"
 version = "0.1.0"
 authors = ["jarofietz <jaro.fietz@uniscon.de>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/oberien/str-concat"
+description = "Concatenate two adjacent string slices"
+keywords = ["str", "concat", "concatenate"]
+readme = "README.md"
 
 [dependencies]
