@@ -1,2 +1,3 @@
 # str-concat
-Concatenate two adjacent str-references.
+
+Concatenate two adjacent string slices.

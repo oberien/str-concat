@@ -1,0 +1,6 @@
+[package]
+name = "str-concat"
+version = "0.1.0"
+authors = ["jarofietz <jaro.fietz@uniscon.de>"]
+
+[dependencies]
