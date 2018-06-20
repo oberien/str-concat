@@ -18,6 +18,24 @@ pub enum Error {
 ///
 /// Returns `Err` if the two slices aren't adjacent, `a` is after `b`, or if
 /// `a` is too long for proper concatenation (longer than `isize::MAX`).
+///
+/// # Examples
+///
+/// Correct usage:
+///
+/// ```rust
+/// # use str_concat::concat;
+/// let s = "0123456789";
+/// assert_eq!("0123456", concat(&s[..5], &s[5..7]).unwrap());
+/// ```
+///
+/// Non-adjacent string slices:
+///
+/// ```rust
+/// # use str_concat::{concat, Error};
+/// let s = "0123456789";
+/// assert_eq!(Err(Error::NotAdjacent), concat(&s[..5], &s[6..7]))
+/// ```
 pub fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
     let a_ptr = a.as_bytes().as_ptr();
     let b_ptr = b.as_bytes().as_ptr();
@@ -56,6 +74,24 @@ pub fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
 ///
 /// This is the same as [`concat`] except that it also concatenates
 /// `b` to `a` if `b` is in front of `a` (in which case [`concat`] errors).
+///
+/// # Examples
+///
+/// Reversed order:
+///
+/// ```rust
+/// # use str_concat::concat_unordered;
+/// let s = "0123456789";
+/// assert_eq!("0123456", concat_unordered(&s[5..7], &s[..5]).unwrap());
+/// ```
+///
+/// Normal order:
+///
+/// ```rust
+/// # use str_concat::{concat_unordered, Error};
+/// let s = "0123456789";
+/// assert_eq!("0123456", concat_unordered(&s[..5], &s[5..7]).unwrap())
+/// ```
 ///
 /// [`concat`]: fn.concat.html
 pub fn concat_unordered<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
