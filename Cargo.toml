@@ -6,6 +6,7 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/oberien/str-concat"
 description = "Concatenate two adjacent string slices"
 keywords = ["str", "concat", "concatenate", "string", "slice"]
+categories = ["no-std"]
 readme = "README.md"
 
 [dependencies]
