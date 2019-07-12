@@ -1,4 +1,5 @@
-use std::{slice, str};
+#![no_std]
+use core::{slice, str};
 
 /// Error that can occur during [`concat`](fn.concat.html).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
