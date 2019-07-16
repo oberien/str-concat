@@ -81,9 +81,11 @@ fn concat_slice<'a>(a: &'a [u8], b: &'a [u8]) -> Result<&'a [u8], Error> {
         if new_len > isize::max_value() as usize {
             return Err(Error::TooLong);
         }
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
         // * slices are adjacent (checked above)
         // * no double-free / leak because we work on borrowed data
         // * no use-after-free because `a` and `b` have same lifetime
+        // * the total size is smaller than isize bytes, len is and we have `u8`
         Ok(slice::from_raw_parts(a_ptr, new_len))
     }
 }
