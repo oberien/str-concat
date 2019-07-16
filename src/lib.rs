@@ -77,6 +77,10 @@ fn concat_slice<'a>(a: &'a [u8], b: &'a [u8]) -> Result<&'a [u8], Error> {
             return Err(Error::NotAdjacent);
         }
         // UNWRAP: both smaller than isize, can't wrap in usize.
+        // This is because in rust `usize` and `isize` are both guaranteed to have
+        // the same number of bits as a pointer [1]. As `isize` is signed, a `usize`
+        // can always store the sum of two positive `isize`.
+        // [1]: https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
         let new_len = a_len.checked_add(b_len).unwrap();
         if new_len > isize::max_value() as usize {
             return Err(Error::TooLong);
