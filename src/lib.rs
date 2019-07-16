@@ -38,25 +38,9 @@ pub enum Error {
 /// assert_eq!(Err(Error::NotAdjacent), concat(&s[..5], &s[6..7]))
 /// ```
 pub fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
-    let a_ptr = a.as_bytes().as_ptr();
-    let b_ptr = b.as_bytes().as_ptr();
-    
+    let slice = concat_slice(a.as_bytes(), b.as_bytes())?;
+
     unsafe {
-        if a.len() > isize::max_value() as usize {
-            return Err(Error::TooLong);
-        }
-        // https://doc.rust-lang.org/std/primitive.pointer.html#safety-1
-        // * starting pointer in-bounds obviously
-        // * ending pointer one byte past the end of an allocated object
-        // * explicit isize overflow check above
-        // * no wraparound required
-        if a_ptr.offset(a.len() as isize) != b_ptr {
-            return Err(Error::NotAdjacent);
-        }
-        // * strs are adjacent (checked above)
-        // * no double-free / leak because we work on borrowed data
-        // * no use-after-free because `a` and `b` have same lifetime
-        let slice = slice::from_raw_parts(a_ptr, a.len() + b.len());
         // * concatenating two valid UTF8 strings will produce a valid UTF8 string
         // * a BOM in `b` is still valid:
         //   > It is important to understand that the character U+FEFF appearing at
@@ -68,6 +52,45 @@ pub fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
         //   a zero width joiner or similar.
         //   This does not affect the correctness of UTF-8.
         Ok(str::from_utf8_unchecked(slice))
+    }
+}
+
+fn concat_slice<'a>(a: &'a [u8], b: &'a [u8]) -> Result<&'a [u8], Error> {
+    let a_ptr = a.as_ptr();
+    let b_ptr = b.as_ptr();
+
+    let a_len = a.len();
+    let b_len = b.len();
+
+    // These should be guaranteed for the slices.
+    assert!(a_len <= isize::max_value() as usize);
+    assert!(b_len <= isize::max_value() as usize);
+
+    unsafe {
+        // https://doc.rust-lang.org/std/primitive.pointer.html#safety-1
+        // * starting pointer in-bounds obviously
+        // * ending pointer one byte past the end of an allocated object
+        // * explicit isize overflow check above
+        // * no wraparound required
+        // why: this is the one byte past the end pointer for the input slice `a`
+        if a_ptr.offset(a_len as isize) != b_ptr {
+            return Err(Error::NotAdjacent);
+        }
+        // UNWRAP: both smaller than isize, can't wrap in usize.
+        // This is because in rust `usize` and `isize` are both guaranteed to have
+        // the same number of bits as a pointer [1]. As `isize` is signed, a `usize`
+        // can always store the sum of two positive `isize`.
+        // [1]: https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
+        let new_len = a_len.checked_add(b_len).unwrap();
+        if new_len > isize::max_value() as usize {
+            return Err(Error::TooLong);
+        }
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+        // * slices are adjacent (checked above)
+        // * no double-free / leak because we work on borrowed data
+        // * no use-after-free because `a` and `b` have same lifetime
+        // * the total size is smaller than isize bytes, len is and we have `u8`
+        Ok(slice::from_raw_parts(a_ptr, new_len))
     }
 }
 
