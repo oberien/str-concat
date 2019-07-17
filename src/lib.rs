@@ -1,5 +1,5 @@
 #![no_std]
-use core::{slice, str};
+use core::{mem, slice, str};
 
 /// Error that can occur during [`concat`](fn.concat.html).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,16 +55,64 @@ pub fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
     }
 }
 
-fn concat_slice<'a>(a: &'a [u8], b: &'a [u8]) -> Result<&'a [u8], Error> {
+/// Concatenate two slices if they are adjacent.
+///
+/// If two slices are adjacent to each other in memory, this function
+/// concatenates both, creating a single longer slice. Note that slices of
+/// zero-sized types (ZST) are never considered adjacent. Otherwise it would be
+/// possible to concatenate a slice to itself.
+///
+/// # Errors
+///
+/// Returns `Err` if the two slices aren't adjacent, `a` is after `b`, or if the
+/// result is too long to be represented as a slice (size in bytes is larger
+/// than `isize::MAX`).
+///
+/// When T is a ZST then returns `Err(TooLong)` if the total length would overflow
+/// `usize` and `Err(NotAdjacent)` otherwise.
+///
+/// # Examples
+///
+/// Correct usage:
+///
+/// ```rust
+/// # use str_concat::concat_slice;
+/// let s = b"0123456789";
+/// assert_eq!(b"0123456", concat_slice(&s[..5], &s[5..7]).unwrap());
+/// ```
+///
+/// Non-adjacent byte slices:
+///
+/// ```rust
+/// # use str_concat::{concat_slice, Error};
+/// let s = b"0123456789";
+/// assert_eq!(Err(Error::NotAdjacent), concat_slice(&s[..5], &s[6..7]))
+/// ```
+///
+pub fn concat_slice<'a, T>(a: &'a [T], b: &'a [T]) -> Result<&'a [T], Error> {
     let a_ptr = a.as_ptr();
     let b_ptr = b.as_ptr();
 
     let a_len = a.len();
     let b_len = b.len();
 
+    if mem::size_of::<T>() == 0 {
+        // Not safety critical but we check that the length is as expected.
+        if a_len.checked_add(b_len).is_none() {
+            return Err(Error::TooLong)
+        }
+
+        // Never consider ZST slices adjacent. You could otherwise infinitely
+        // duplicate a non-zero length slice by concatenating it to itself.
+        return Err(Error::NotAdjacent)
+    }
+
+    // `max_len <= isize::max_value()`
+    let max_len = isize::max_value() as usize / mem::size_of::<T>();
+
     // These should be guaranteed for the slices.
-    assert!(a_len <= isize::max_value() as usize);
-    assert!(b_len <= isize::max_value() as usize);
+    assert!(a_len <= max_len as usize);
+    assert!(b_len <= max_len as usize);
 
     unsafe {
         // https://doc.rust-lang.org/std/primitive.pointer.html#safety-1
@@ -82,14 +130,16 @@ fn concat_slice<'a>(a: &'a [u8], b: &'a [u8]) -> Result<&'a [u8], Error> {
         // can always store the sum of two positive `isize`.
         // [1]: https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
         let new_len = a_len.checked_add(b_len).unwrap();
-        if new_len > isize::max_value() as usize {
+        // Ensure the length is bounded. The bound is strict from the definition of `max_len`
+        // `new_len <= max_len` <=> `new_len * mem::size_of::<T>() <= isize::max_value()`
+        if !(new_len <= max_len) {
             return Err(Error::TooLong);
         }
         // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
         // * slices are adjacent (checked above)
         // * no double-free / leak because we work on borrowed data
         // * no use-after-free because `a` and `b` have same lifetime
-        // * the total size is smaller than isize bytes, len is and we have `u8`
+        // * the total size is smaller than `isize::MAX` bytes, as max_len is rounded down
         Ok(slice::from_raw_parts(a_ptr, new_len))
     }
 }
