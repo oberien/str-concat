@@ -227,7 +227,7 @@ pub fn concat_slice_unordered<'a, T>(a: &'a [T], b: &'a [T]) -> Result<&'a [T], 
 
 #[cfg(test)]
 mod tests {
-    use super::{concat, concat_unordered, Error};
+    use super::{concat, concat_unordered, concat_slice, concat_slice_unordered, Error};
 
     #[test]
     fn simple_success() {
@@ -276,5 +276,35 @@ mod tests {
         assert_eq!(Ok("0123"), concat(s, &s[4..]));
         assert_eq!(Ok("0123"), concat_unordered(s, &s[4..]));
         assert_eq!(Ok("0123"), concat_unordered(&s[4..], s));
+    }
+
+    #[test]
+    fn typed_slices() {
+        #[derive(Debug, PartialEq)]
+        struct T(usize);
+
+        let s: &[T] = &[T(0), T(1), T(2), T(3)][..];
+        assert_eq!(Ok(s), concat_slice(&s[..2], &s[2..]));
+        assert_eq!(Ok(s), concat_slice_unordered(&s[..2], &s[2..]));
+        assert_eq!(Ok(s), concat_slice_unordered(&s[2..], &s[..2]));
+
+        // One slice empty
+        assert_eq!(Ok(s), concat_slice(&s[..0], s));
+        assert_eq!(Ok(s), concat_slice_unordered(&s[..0], s));
+        assert_eq!(Ok(s), concat_slice_unordered(s, &s[..0]));
+        assert_eq!(Ok(s), concat_slice(s, &s[4..]));
+        assert_eq!(Ok(s), concat_slice_unordered(s, &s[4..]));
+        assert_eq!(Ok(s), concat_slice_unordered(&s[4..], s));
+    }
+
+    #[test]
+    fn typed_fail() {
+        #[derive(Debug, PartialEq)]
+        struct T(usize);
+
+        let s: &[T] = &[T(0), T(1), T(2), T(3)][..];
+        assert_eq!(Err(Error::NotAdjacent), concat_slice(&s[..1], &s[2..]));
+        assert_eq!(Err(Error::NotAdjacent), concat_slice_unordered(&s[..1], &s[2..]));
+        assert_eq!(Err(Error::NotAdjacent), concat_slice(&s[2..], &s[..2]));
     }
 }
