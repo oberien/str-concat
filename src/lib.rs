@@ -173,7 +173,7 @@ pub fn concat_unordered<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
     let a_ptr = a.as_bytes().as_ptr() as usize;
     let a_end_ptr = a_ptr + a.len();
     let b_ptr = b.as_bytes().as_ptr() as usize;
-    
+
     // make the order of `a` and `b` not matter
     let (a, b) = if a_ptr <= b_ptr && a_end_ptr <= b_ptr {
         (a, b)
@@ -182,6 +182,47 @@ pub fn concat_unordered<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
     };
 
     concat(a, b)
+}
+
+/// Concatenate two adjacent slices no matter their order.
+///
+/// This is the same as [`concat_slice`] except that it also concatenates `b` to
+/// `a` if `b` is in front of `a` (in which case of [`concat_slice`] errors).
+/// Keep in mind that slices of ZSTs will still not be concatenated.
+///
+/// # Examples
+///
+/// Reversed order:
+///
+/// ```rust
+/// # use str_concat::concat_slice_unordered;
+/// let s = b"0123456789";
+/// assert_eq!(b"0123456", concat_slice_unordered(&s[5..7], &s[..5]).unwrap());
+/// ```
+///
+/// Normal order:
+///
+/// ```rust
+/// # use str_concat::{concat_slice_unordered, Error};
+/// let s = b"0123456789";
+/// assert_eq!(b"0123456", concat_slice_unordered(&s[..5], &s[5..7]).unwrap())
+/// ```
+///
+/// [`concat_slice`]: fn.concat_slice.html
+pub fn concat_slice_unordered<'a, T>(a: &'a [T], b: &'a [T]) -> Result<&'a [T], Error> {
+    // add lengths to handle empty cases correctly
+    let a_ptr = a.as_ptr() as usize;
+    let a_end_ptr = a_ptr + a.len() * mem::size_of::<T>();
+    let b_ptr = b.as_ptr() as usize;
+
+    // make the order of `a` and `b` not matter
+    let (a, b) = if a_ptr <= b_ptr && a_end_ptr <= b_ptr {
+        (a, b)
+    } else {
+        (b, a)
+    };
+
+    concat_slice(a, b)
 }
 
 #[cfg(test)]
