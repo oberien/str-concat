@@ -79,7 +79,13 @@ pub unsafe fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
 /// than `isize::MAX`).
 ///
 /// When T is a ZST then returns `Err(TooLong)` if the total length would overflow
-/// `usize` and `Err(NotAdjacent)` otherwise.
+/// `usize` and `Err(NotAdjacent)` otherwise. This is because ZST-slices are [extra
+/// weird][zst-str-concat] and [their safety][zst-unsafe-wg1] is not yet [fully
+/// determined][zst-unsafe-wg2].
+///
+/// [zst-str-concat]: https://github.com/oberien/str-concat/issues/5
+/// [zst-unsafe-wg1]: https://github.com/rust-lang/unsafe-code-guidelines/issues/93
+/// [zst-unsafe-wg2]: https://github.com/rust-lang/unsafe-code-guidelines/issues/168
 ///
 /// # Safety
 ///
@@ -93,10 +99,12 @@ pub unsafe fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
 ///
 /// ```rust
 /// # use str_concat::concat_slice;
-/// let s = b"0123456789";
+/// let s = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 /// unsafe {
 ///     // SAFETY: slices from the same bytes originally.
-///     assert_eq!(b"0123456", concat_slice(&s[..5], &s[5..7]).unwrap());
+///     assert_eq!(
+///         [0, 1, 2, 3, 4, 5, 6], 
+///         concat_slice(&s[..5], &s[5..7]).unwrap());
 /// }
 /// ```
 ///
@@ -104,7 +112,7 @@ pub unsafe fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
 ///
 /// ```rust
 /// # use str_concat::{concat_slice, Error};
-/// let s = b"0123456789";
+/// let s = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 /// unsafe {
 ///     // SAFETY: slices from the same bytes originally.
 ///     assert_eq!(Err(Error::NotAdjacent), concat_slice(&s[..5], &s[6..7]))
@@ -126,6 +134,10 @@ pub unsafe fn concat_slice<'a, T>(a: &'a [T], b: &'a [T]) -> Result<&'a [T], Err
 
         // Never consider ZST slices adjacent. You could otherwise infinitely
         // duplicate a non-zero length slice by concatenating it to itself.
+        // See: https://github.com/rust-lang/unsafe-code-guidelines/issues/93
+        // and https://github.com/rust-lang/unsafe-code-guidelines/issues/168
+        // where the second link makes it sound like it would be possible but
+        // not necessarily easy.
         return Err(Error::NotAdjacent)
     }
 
@@ -220,7 +232,7 @@ pub unsafe fn concat_unordered<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Er
 ///
 /// This is the same as [`concat_slice`] except that it also concatenates `b` to
 /// `a` if `b` is in front of `a` (in which case of [`concat_slice`] errors).
-/// Keep in mind that slices of ZSTs will still not be concatenated.
+/// Keep in mind that slices of zero-sized types (ZST) will still not be concatenated.
 ///
 /// # Safety
 ///
@@ -234,10 +246,12 @@ pub unsafe fn concat_unordered<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Er
 ///
 /// ```rust
 /// # use str_concat::concat_slice_unordered;
-/// let s = b"0123456789";
+/// let s = [0, 1, 2, 3, 4, 5, 6];
 /// unsafe {
 ///     // SAFETY: slices from the same bytes originally.
-///     assert_eq!(b"0123456", concat_slice_unordered(&s[5..7], &s[..5]).unwrap());
+///     assert_eq!(
+///         [0, 1, 2, 3, 4, 5, 6],
+///         concat_slice_unordered(&s[5..7], &s[..5]).unwrap());
 /// }
 /// ```
 ///
@@ -245,10 +259,12 @@ pub unsafe fn concat_unordered<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Er
 ///
 /// ```rust
 /// # use str_concat::{concat_slice_unordered, Error};
-/// let s = b"0123456789";
+/// let s = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 /// unsafe {
 ///     // SAFETY: slices from the same bytes originally.
-///     assert_eq!(b"0123456", concat_slice_unordered(&s[..5], &s[5..7]).unwrap())
+///     assert_eq!(
+///         [0, 1, 2, 3, 4, 5, 6],
+///         concat_slice_unordered(&s[..5], &s[5..7]).unwrap())
 /// }
 /// ```
 ///
