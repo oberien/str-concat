@@ -78,10 +78,9 @@ pub unsafe fn concat<'a>(a: &'a str, b: &'a str) -> Result<&'a str, Error> {
 /// result is too long to be represented as a slice (size in bytes is larger
 /// than `isize::MAX`).
 ///
-/// When T is a ZST then returns `Err(TooLong)` if the total length would overflow
-/// `usize` and `Err(NotAdjacent)` otherwise. This is because ZST-slices are [extra
-/// weird][zst-str-concat] and [their safety][zst-unsafe-wg1] is not yet [fully
-/// determined][zst-unsafe-wg2].
+/// When T is a zero-sized type (ZST) then always returns `Err(NotAdjacent)` otherwise. This is
+/// because ZST-slices are [extra weird][zst-str-concat] and [their safety][zst-unsafe-wg1] is not
+/// yet [fully determined][zst-unsafe-wg2].
 ///
 /// [zst-str-concat]: https://github.com/oberien/str-concat/issues/5
 /// [zst-unsafe-wg1]: https://github.com/rust-lang/unsafe-code-guidelines/issues/93
@@ -127,17 +126,15 @@ pub unsafe fn concat_slice<'a, T>(a: &'a [T], b: &'a [T]) -> Result<&'a [T], Err
     let b_len = b.len();
 
     if mem::size_of::<T>() == 0 {
-        // Not safety critical but we check that the length is as expected.
-        if a_len.checked_add(b_len).is_none() {
-            return Err(Error::TooLong)
-        }
-
-        // Never consider ZST slices adjacent. You could otherwise infinitely
-        // duplicate a non-zero length slice by concatenating it to itself.
+        // NOTE(HeroicKatora)
+        // Never consider ZST slices adjacent through this function. You could
+        // infinitely duplicate a non-zero length slice by concatenating it to
+        // itself as opposed to non-ZST slice types. That would just be weird.
+        //
+        // It is however safe.
         // See: https://github.com/rust-lang/unsafe-code-guidelines/issues/93
         // and https://github.com/rust-lang/unsafe-code-guidelines/issues/168
-        // where the second link makes it sound like it would be possible but
-        // not necessarily easy.
+        // Issue: https://github.com/oberien/str-concat/issues/5
         return Err(Error::NotAdjacent)
     }
 
