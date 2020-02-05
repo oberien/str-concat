@@ -382,4 +382,16 @@ mod tests {
             assert_eq!(Err(Error::NotAdjacent), concat_slice(&s[2..], &s[..2]));
         }
     }
+
+    #[test]
+    fn zst_fail() {
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        struct Zst;
+
+        let s: &[Zst] = &[Zst; 4];
+        unsafe {
+            assert_eq!(Err(Error::NotAdjacent), concat_slice(&s[..1], &s[1..]));
+            assert_eq!(Err(Error::NotAdjacent), concat_slice_unordered(&s[..1], &s[1..]));
+        }
+    }
 }
