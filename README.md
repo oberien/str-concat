@@ -13,12 +13,18 @@ use str_concat::{concat, concat_unordered, Error};
 fn main() {
     let s = "0123456789";
     // ordered, `a` before `b`
-    assert_eq!(Ok("0123456"), concat(&s[..5], &s[5..7]));
-    assert_eq!(Ok("0123456"), concat_unordered(&s[..5], &s[5..7]));
+    unsafe {
+        // SAFETY: the slices are from the same `&str`.
+        assert_eq!(Ok("0123456"), concat(&s[..5], &s[5..7]));
+        assert_eq!(Ok("0123456"), concat_unordered(&s[..5], &s[5..7]));
+    }
 
     // unordered, `b` before `a`
-    assert_eq!(Err(Error::NotAdjacent), concat(&s[5..7], &s[..5]));
-    assert_eq!(Ok("0123456"), concat_unordered(&s[5..7], &s[..5]));
+    unsafe {
+        // SAFETY: the slices are from the same `&str`.
+        assert_eq!(Err(Error::NotAdjacent), concat(&s[5..7], &s[..5]));
+        assert_eq!(Ok("0123456"), concat_unordered(&s[5..7], &s[..5]));
+    }
 }
 ```
 
