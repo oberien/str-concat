@@ -39,7 +39,7 @@ As such, there is no need to actually allocate any space during runtime when usi
 Instead, a slice to ZSTs may point to the smallest non-zero address with the correct alignment (for example `vec![()].as_ptr() as usize == 1`).
 Technically it's sound to arbitrarily elongate a slice of ZST given it already contains at least one element.
 However, we decided that semantically it doesn't make sense to use this functionality.
-As we also don't have any way to tell that two ZST slices are adjacent, we decided to always return an error if two ZST slices are tried to be concatenated.
+As we also don't have any way to tell that two ZST slices are adjacent, we decided to always return an error if two ZST slices are passed to be concatenated.
 For further reading surrounding this issue with ZST slices, see [#5], [rust-lang/unsafe-code-guidelines#93] and [rust-lang/unsafe-code-guidelines#168].
 
 [#8]: https://github.com/oberien/str-concat/issues/8
